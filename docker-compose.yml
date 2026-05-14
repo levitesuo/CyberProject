@@ -1,0 +1,60 @@
+services:
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: dev.Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    container_name: frontend-dev
+
+  db-init:
+    image: postgres:17
+    volumes:
+      - ./db/init.sql:/init.sql:ro
+    environment:
+      PGPASSWORD: password
+    command: psql -h cyber-db-dev -U user -d cyberapp -f /init.sql
+    depends_on:
+      cyber-db-dev:
+        condition: service_healthy
+    restart: "no"
+
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: dev.Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DATABASE_URL: postgres://user:password@cyber-db-dev/cyberapp
+      FRONTEND_URL: http://localhost:5173
+      JWT_SECRET: secret
+      CRON_SECRET: secret
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    container_name: backend-dev
+
+  cyber-db-dev:
+    image: postgres:17
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    environment:
+      PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cyberapp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d cyberapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    container_name: cyber-db-dev
