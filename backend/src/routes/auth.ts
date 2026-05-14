@@ -23,6 +23,11 @@ authRouter.post("/register", async (req: Request, res: Response) => {
   const user = await User.create({ username: String(username), password: hashedPassword });
   */
 
+  if (await User.findOne({ where: { username } })) {
+    res.status(409).json({ error: "Username already exists" });
+    return;
+  }
+
   const user = await User.create({
     username: String(username),
     password: String(password),
@@ -57,7 +62,10 @@ authRouter.post("/login", async (req: Request, res: Response) => {
     { expiresIn: "1h" }
   );
   */
-  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET);
+  const token = jwt.sign(
+    { userId: user.id, username: user.username },
+    JWT_SECRET,
+  );
 
   res.json({ token });
 });
