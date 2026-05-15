@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import requireAuth, { type AuthRequest } from "../middleware/authMiddleware.js";
 import { Note } from "../models/index.js";
-import { sequelize } from "../db.js";
+import rateLimit from "express-rate-limit";
 export const notesRouter = Router();
 
 notesRouter.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
@@ -18,19 +18,9 @@ notesRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    // VULNERABILITY 2: Open to sql injection
-    // LINK: https://owasp.org/Top10/2021/A03_2021-Injection/
-    // FIX:
-    /*
     const note = await Note.create({
-      user_id: req.user?.userId,
+      user_id: Number(req.user?.userId),
       content,
-    });
-    */
-    const query = `INSERT INTO notes (user_id, content) VALUES (${req.user?.userId}, '${content}') RETURNING *`;
-
-    const [note] = await sequelize.query(query, {
-      type: sequelize.QueryTypes.INSERT,
     });
 
     res.status(201).json(note);
@@ -43,17 +33,8 @@ notesRouter.get(
   "/:id",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    // VULNERABILITY 1: No chekck if the note belongs to the user
-    // LINK: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
-    // FIX:
-    /*
     const note = await Note.findOne({
       where: { id: Number(req.params.id), user_id: req.user?.userId },
-    });
-    */
-
-    const note = await Note.findOne({
-      where: { id: Number(req.params.id) },
     });
     if (!note) {
       res.status(404).json({ error: "Note not found" });
@@ -72,24 +53,16 @@ const placeholder_costly_ai_call = async (prompt: string): Promise<string> => {
   });
 };
 
-// VULNERABILITY 5: No rate limiting on costly endpoint
-// LINK: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
-// FIX:
-/*
-    import rateLimit from "express-rate-limit";
-    const aiLimiter = rateLimit({
-      windowMs: 60 * 1000,
-      max: 5, 
-      keyGenerator: (req) => String(req.user?.userId),
-    });
-    notesRouter.post("/ai", requireAuth, aiLimiter, async (req: AuthRequest, res: Response) => {
-      ...
-    });
-    */
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req: AuthRequest) => String(req.user?.userId),
+});
 
 notesRouter.post(
   "/ai",
   requireAuth,
+  aiLimiter,
   async (req: AuthRequest, res: Response) => {
     const { prompt } = req.body;
 

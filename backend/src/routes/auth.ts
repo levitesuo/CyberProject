@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import { User } from "../models/index.js";
 
 export const authRouter = Router();
@@ -14,24 +15,17 @@ authRouter.post("/register", async (req: Request, res: Response) => {
     return;
   }
 
-  // VULNERABILITY 4: No password hashing
-  // LINK: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
-  // FIX:
-  /*
-  import bcrypt from "bcrypt";
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await User.create({ username: String(username), password: hashedPassword });
-  */
-
   if (await User.findOne({ where: { username } })) {
     res.status(409).json({ error: "Username already exists" });
     return;
   }
 
+  const hashedPassword = await bcrypt.hash(password, 10);
   const user = await User.create({
     username: String(username),
-    password: String(password),
+    password: hashedPassword,
   });
+
   res.status(201).json({ id: user.id, username: user.username });
 });
 
@@ -47,24 +41,15 @@ authRouter.post("/login", async (req: Request, res: Response) => {
   }
 
   const user = await User.findOne({ where: { username } });
-  if (!user || user.password !== password) {
+  if (!user || !bcrypt.compareSync(String(password), user.password)) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
 
-  // VULNERABILITY 3: Login tokens never expire
-  // LINK: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
-  // FIX:
-  /*
   const token = jwt.sign(
     { userId: user.id, username: user.username },
     JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-  */
-  const token = jwt.sign(
-    { userId: user.id, username: user.username },
-    JWT_SECRET,
+    { expiresIn: "1h" },
   );
 
   res.json({ token });
