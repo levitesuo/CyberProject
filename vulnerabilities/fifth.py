@@ -1,5 +1,5 @@
-# VULNERABILITY 3: Open to sql injection
-# LINK: https://owasp.org/Top10/2021/A03_2021-Injection/
+# VULNERABILITY 5: No rate limiting on costly endpoint
+# LINK: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
 
 # For this script to work you need to install aiohttp
 from helper import API_BASE_URL, create_new_user_and_get_token
