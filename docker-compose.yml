@@ -45,10 +45,11 @@ services:
 
   cyber-db-dev:
     image: postgres:17
+    ports:
+      - "5433:5432"
     volumes:
       - ./db-data:/var/lib/postgresql/data
     environment:
-      PORT: 5432
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: cyberapp

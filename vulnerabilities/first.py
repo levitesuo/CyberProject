@@ -8,8 +8,14 @@ import requests
 def main():
     token = create_new_user_and_get_token()
     headers = {"Authorization": f"Bearer {token}"}
-    res = requests.get(f"{API_BASE_URL}/notes/1", headers=headers)
-    return res.json()
+    notes = []
+    i = 1
+    while True:
+        res = requests.get(f"{API_BASE_URL}/notes/{i}", headers=headers)
+        if res.status_code != 200:
+            return notes
+        notes.append(res.json())
+        i += 1
 
 
 if __name__ == "__main__":
